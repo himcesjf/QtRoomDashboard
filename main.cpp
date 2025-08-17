@@ -13,7 +13,8 @@ int main(int argc, char *argv[]) {
     
     // Initialize logging
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::debug);    // Dev
+    // spdlog::set_level(spdlog::level::info);  // Prod
     
     // Create and register the sensor model
     SensorModel sensorModel;

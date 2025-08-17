@@ -9,9 +9,11 @@ SensorModel::SensorModel(QObject *parent)
     , m_co2(400.0)
     , m_recording(false)
 {
+    spdlog::debug("SensorModel: Init t={}, h={}, c={}", m_temperature, m_humidity, m_co2);
     connect(&m_worker, &SensorWorker::sensorDataChanged,
             this, &SensorModel::onSensorDataChanged);
     m_worker.start();
+    spdlog::debug("SensorModel: Started");
 }
 
 SensorModel::~SensorModel() {
@@ -22,6 +24,7 @@ SensorModel::~SensorModel() {
 }
 
 void SensorModel::onSensorDataChanged(double temperature, double humidity, double co2) {
+    spdlog::debug("Data: t={:.1f} h={:.1f} c={:.0f}", temperature, humidity, co2);
     setTemperature(temperature);
     setHumidity(humidity);
     setCo2(co2);
@@ -29,10 +32,12 @@ void SensorModel::onSensorDataChanged(double temperature, double humidity, doubl
 
 void SensorModel::setTemperature(double temp) {
     if (m_temperature != temp) {
+        spdlog::debug("T: {:.1f}->{:.1f}", m_temperature, temp);
         m_temperature = temp;
         emit temperatureChanged();
         
         if (m_recording && m_csvWriter) {
+            spdlog::debug("CSV: {:.1f},{:.1f},{:.0f}", temp, m_humidity, m_co2);
             m_csvWriter->writeRow({
                 QString::number(temp).toStdString(),
                 QString::number(m_humidity).toStdString(),
@@ -45,6 +50,7 @@ void SensorModel::setTemperature(double temp) {
 
 void SensorModel::setHumidity(double hum) {
     if (m_humidity != hum) {
+        spdlog::debug("H: {:.1f}->{:.1f}", m_humidity, hum);
         m_humidity = hum;
         emit humidityChanged();
     }
@@ -52,6 +58,7 @@ void SensorModel::setHumidity(double hum) {
 
 void SensorModel::setCo2(double co2) {
     if (m_co2 != co2) {
+        spdlog::debug("C: {:.0f}->{:.0f}", m_co2, co2);
         m_co2 = co2;
         emit co2Changed();
     }
@@ -59,6 +66,7 @@ void SensorModel::setCo2(double co2) {
 
 void SensorModel::setRecording(bool recording) {
     if (recording != m_recording) {
+        spdlog::debug("Rec: {}->{}", m_recording, recording);
         if (recording) {
             startRecording();
         } else {
@@ -71,25 +79,32 @@ void SensorModel::startRecording() {
     if (!m_recording) {
         QString filename = QString("sensor_data_%1.csv")
             .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss"));
+        spdlog::debug("Start rec: {}", filename.toStdString());
         m_csvWriter = std::make_unique<CsvWriter>(filename.toStdString());
         
         if (m_csvWriter->isOpen()) {
+            spdlog::debug("CSV opened, header written");
             m_csvWriter->writeHeader({"Temperature", "Humidity", "CO2", "Timestamp"});
             m_recording = true;
             emit recordingChanged();
             spdlog::info("Started recording to {}", filename.toStdString());
         } else {
             m_csvWriter.reset();
-            spdlog::error("Failed to start recording");
+            spdlog::error("Failed to open: {}", filename.toStdString());
         }
+    } else {
+        spdlog::debug("Already recording");
     }
 }
 
 void SensorModel::stopRecording() {
     if (m_recording) {
+        spdlog::debug("Stop recording");
         m_csvWriter.reset();
         m_recording = false;
         emit recordingChanged();
         spdlog::info("Stopped recording");
+    } else {
+        spdlog::debug("Not recording");
     }
 }
